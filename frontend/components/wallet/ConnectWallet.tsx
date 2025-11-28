@@ -49,6 +49,11 @@ export default function ConnectWallet({ onConnect }: ConnectWalletProps) {
     return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
   };
 
+  // Filter out Coinbase Wallet to avoid authorization issues
+  const filteredConnectors = connectors.filter(
+    (connector) => !connector.name.toLowerCase().includes('coinbase')
+  );
+
   if (isConnected && address) {
     return (
       <div className="flex items-center gap-3">
@@ -93,7 +98,7 @@ export default function ConnectWallet({ onConnect }: ConnectWalletProps) {
 
         {/* Wallet Options */}
         <div className="space-y-3">
-          {connectors.map((connector) => (
+          {filteredConnectors.map((connector) => (
             <button
               key={connector.uid}
               onClick={() => handleConnectorClick(connector)}

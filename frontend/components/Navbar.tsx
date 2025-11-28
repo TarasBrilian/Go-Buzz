@@ -1,4 +1,7 @@
+'use client';
+
 import Link from "next/link";
+import HamburgerMenu from "./HamburgerMenu";
 
 export default function Navbar() {
   return (
@@ -22,16 +25,8 @@ export default function Navbar() {
             </div>
           </Link>
 
-          {/* CTA Button */}
-          <Link href="/app">
-            <button className="nav-cta-button">
-              <span className="relative z-10 flex items-center gap-2">
-                <span className="text-lg"></span>
-                Launch App
-              </span>
-              <div className="nav-cta-glow" />
-            </button>
-          </Link>
+          {/* Hamburger Menu */}
+          <HamburgerMenu />
         </div>
       </div>
     </nav>
