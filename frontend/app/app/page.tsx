@@ -17,6 +17,7 @@ import {
   type Tab,
 } from '@/components';
 import BlockchainCampaignList from '@/components/campaign/BlockchainCampaignList';
+import TwitterAuth from '@/components/auth/TwitterAuth';
 
 const TABS: Tab[] = [
   { id: 'explore', label: 'Explore Campaign' },
@@ -194,6 +195,13 @@ export default function AppPage() {
       <div className="relative z-10">
         {/* Header */}
         <AppHeader onConnectClick={handleConnect} />
+
+        {/* Twitter Auth Section */}
+        <div className="container mx-auto px-6 pt-8">
+          <div className="max-w-2xl mx-auto">
+            <TwitterAuth />
+          </div>
+        </div>
 
         {/* Navigation Bar */}
         <NavigationTabs
@@ -497,7 +505,7 @@ export default function AppPage() {
                 </div>
 
                 {/* Blockchain Campaign List */}
-                <BlockchainCampaignList />
+                <BlockchainCampaignList filterExpired={activeTab === 'pass'} />
               </div>
             )}
           </Panel>

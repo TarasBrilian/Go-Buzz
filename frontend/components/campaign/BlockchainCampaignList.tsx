@@ -4,8 +4,17 @@ import { useCampaigns } from '@/hooks/useCampaigns';
 import { useCampaignInfo } from '@/hooks/useCampaignInfo';
 import { Address, formatUnits } from 'viem';
 
+interface BlockchainCampaignListProps {
+  filterExpired?: boolean;
+}
+
 interface CampaignCardProps {
   address: Address;
+}
+
+interface FilteredCampaignCardProps {
+  address: Address;
+  filterExpired: boolean;
 }
 
 function CampaignCard({ address }: CampaignCardProps) {
@@ -92,7 +101,33 @@ function CampaignCard({ address }: CampaignCardProps) {
   );
 }
 
-export default function BlockchainCampaignList() {
+function FilteredCampaignCard({ address, filterExpired }: FilteredCampaignCardProps) {
+  const { campaignInfo, isLoading } = useCampaignInfo(address);
+
+  // Don't render loading state for filtered items - just skip them
+  if (isLoading || !campaignInfo) {
+    return null;
+  }
+
+  const endDate = new Date(Number(campaignInfo.end) * 1000);
+  const isExpired = Date.now() > endDate.getTime();
+  const isActive = campaignInfo.isActive && !isExpired;
+
+  // Filter logic:
+  // - For Pass Campaign (filterExpired=true): show only expired/inactive campaigns
+  // - For Explore Campaign (filterExpired=false): show only active campaigns
+  if (filterExpired) {
+    // Pass Campaign: show if expired OR not active
+    if (isActive) return null;
+  } else {
+    // Explore Campaign: show only active campaigns
+    if (!isActive) return null;
+  }
+
+  return <CampaignCard address={address} />;
+}
+
+export default function BlockchainCampaignList({ filterExpired = false }: BlockchainCampaignListProps) {
   const { campaigns, campaignCount, isLoading } = useCampaigns();
 
   if (isLoading) {
@@ -146,7 +181,7 @@ export default function BlockchainCampaignList() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {campaigns.map((address) => (
-          <CampaignCard key={address} address={address} />
+          <FilteredCampaignCard key={address} address={address} filterExpired={filterExpired} />
         ))}
       </div>
     </div>
