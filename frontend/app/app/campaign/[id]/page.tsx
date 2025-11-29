@@ -5,6 +5,8 @@ import { AppHeader, SpaceBackground, Panel } from '@/components';
 import { useAccount } from 'wagmi';
 import { useState } from 'react';
 import { useCampaignInfo } from '@/hooks/useCampaignInfo';
+import { useUserValidation } from '@/hooks/useUserValidation';
+import ValidationModal from '@/components/campaign/ValidationModal';
 import { Address, formatUnits } from 'viem';
 
 export default function CampaignDetailPage() {
@@ -13,17 +15,25 @@ export default function CampaignDetailPage() {
   const campaignAddress = params.id as Address;
   const { isConnected, address } = useAccount();
   const [isJoining, setIsJoining] = useState(false);
+  const [showValidationModal, setShowValidationModal] = useState(false);
+  const [validationErrors, setValidationErrors] = useState<string[]>([]);
 
   const { campaignInfo, isLoading } = useCampaignInfo(campaignAddress);
+  const { validate, isWalletConnected, isTwitterAuthorized } = useUserValidation();
 
   const handleJoinCampaign = () => {
-    if (!isConnected) {
-      alert('Please connect your wallet first to join this campaign');
+    // Validate user requirements
+    const validation = validate();
+
+    if (!validation.isValid) {
+      setValidationErrors(validation.errors);
+      setShowValidationModal(true);
       return;
     }
 
+    // All validations passed, proceed with joining campaign
     setIsJoining(true);
-    // Simulate joining campaign
+    // TODO: Implement actual join campaign logic with smart contract
     setTimeout(() => {
       setIsJoining(false);
       alert(`Successfully joined ${campaignInfo?.name}! Check your wallet for confirmation.`);
@@ -274,7 +284,7 @@ export default function CampaignDetailPage() {
                   {isJoining ? 'Joining...' : !campaignInfo.isActive || isExpired ? 'Campaign Ended' : isConnected ? 'Join Campaign' : 'Connect Wallet to Join'}
                 </button>
                 <button
-                  onClick={() => router.push('/app/explore')}
+                  onClick={() => router.push('/app')}
                   className="px-6 py-4 border border-[#2A3441] text-[#B8C2CC] rounded-lg hover:border-[#00D9FF] hover:text-white transition-colors"
                 >
                   Back
@@ -284,6 +294,15 @@ export default function CampaignDetailPage() {
           </Panel>
         </main>
       </div>
+
+      {/* Validation Modal */}
+      <ValidationModal
+        isOpen={showValidationModal}
+        onClose={() => setShowValidationModal(false)}
+        errors={validationErrors}
+        isWalletConnected={isWalletConnected}
+        isTwitterAuthorized={isTwitterAuthorized}
+      />
     </div>
   );
 }
