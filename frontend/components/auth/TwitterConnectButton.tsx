@@ -29,13 +29,12 @@ export default function TwitterConnectButton({ onAuthChange }: TwitterConnectBut
     const params = new URLSearchParams(window.location.search);
     const twitterConnected = params.get('twitter_connected');
     const twitterError = params.get('error');
+    const errorDetails = params.get('details');
 
     if (twitterConnected === 'true') {
       // Clean URL
       const url = new URL(window.location.href);
       url.searchParams.delete('twitter_connected');
-      url.searchParams.delete('twitter_user');
-      url.searchParams.delete('twitter_name');
       window.history.replaceState({}, '', url.toString());
 
       // Refresh auth status
@@ -43,10 +42,15 @@ export default function TwitterConnectButton({ onAuthChange }: TwitterConnectBut
     }
 
     if (twitterError) {
-      setError(`Authentication failed: ${twitterError}`);
+      const errorMessage = errorDetails
+        ? `Authentication failed: ${twitterError} - ${errorDetails}`
+        : `Authentication failed: ${twitterError}`;
+      setError(errorMessage);
+
       // Clean URL
       const url = new URL(window.location.href);
       url.searchParams.delete('error');
+      url.searchParams.delete('details');
       window.history.replaceState({}, '', url.toString());
     }
   }, []);
