@@ -71,7 +71,7 @@ export default function CampaignDetailPage() {
                 <h2 className="text-2xl font-bold text-white mb-4">Campaign Not Found</h2>
                 <p className="text-[#B8C2CC] mb-6">The campaign you're looking for doesn't exist or invalid address.</p>
                 <button
-                  onClick={() => router.push('/app/explore')}
+                  onClick={() => router.push('/app')}
                   className="px-6 py-3 bg-gradient-to-r from-[#00D9FF] to-[#7B61FF] text-white font-bold rounded-lg hover:opacity-90 transition-opacity"
                 >
                   Back to Campaigns

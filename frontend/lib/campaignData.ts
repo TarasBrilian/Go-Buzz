@@ -125,7 +125,7 @@ export const PASS_CAMPAIGNS: Campaign[] = Array.from({ length: 15 }, (_, i) => {
   return {
     id: i + 11,
     title: `Campaign ${15 - i}`,
-    description: `Engage with our latest social media campaign. Comment, share, and earn rewards based on your engagement metrics.`,
+    description: `Participate in our latest social engagement campaign. Complete verified tasks and earn rewards based on authentic engagement metrics.`,
     platform: ['Twitter', 'Instagram', 'TikTok'][i % 3],
     reward: rewards[i % 10],
     participants: participantCounts[i % 10],

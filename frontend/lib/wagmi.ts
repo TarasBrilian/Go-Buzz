@@ -9,7 +9,7 @@ export const config = createConfig({
       projectId: process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID || '',
       metadata: {
         name: 'GO BUZZ',
-        description: 'Social Media Campaign Platform',
+        description: 'SocialFi Engagement Marketplace - Verified Contributions, Fair Rewards',
         url: typeof window !== 'undefined' ? window.location.origin : 'https://gobuzz.app',
         icons: ['https://avatars.githubusercontent.com/u/37784886']
       },

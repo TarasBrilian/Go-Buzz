@@ -28,8 +28,8 @@ export default function Dashboard() {
     totalCampaigns: 0,
     activeCampaigns: 0,
     totalEarnings: '0.00',
-    totalComments: 0,
-    verifiedComments: 0,
+    totalContributions: 0,
+    verifiedContributions: 0,
     pendingRewards: '0.00',
   });
 
@@ -126,7 +126,7 @@ export default function Dashboard() {
                     </div>
                   </div>
 
-                  <h2 className="text-xl font-bold text-white mb-2">Buzzer User</h2>
+                  <h2 className="text-xl font-bold text-white mb-2">Social Contributor</h2>
                   <p className="text-[#B8C2CC] text-sm font-mono mb-4">Active Member</p>
                 </div>
 
@@ -237,7 +237,7 @@ export default function Dashboard() {
                 <div className="card-pulse" />
               </div>
 
-              {/* Verified Comments */}
+              {/* Verified Contributions */}
               <div className="feature-card p-6">
                 <div className="card-corner card-corner-tl" />
                 <div className="card-corner card-corner-tr" />
@@ -246,8 +246,8 @@ export default function Dashboard() {
 
                 <div className="flex items-start justify-between mb-4">
                   <div>
-                    <p className="text-[#B8C2CC] text-sm mb-2">Verified Comments</p>
-                    <h3 className="text-3xl font-bold text-white">{userStats.verifiedComments}/{userStats.totalComments}</h3>
+                    <p className="text-[#B8C2CC] text-sm mb-2">Verified Contributions</p>
+                    <h3 className="text-3xl font-bold text-white">{userStats.verifiedContributions}/{userStats.totalContributions}</h3>
                   </div>
                   <div className="w-12 h-12 bg-[#7CD2FF]/10 rounded-lg flex items-center justify-center">
                     <svg className="w-6 h-6 text-[#7CD2FF]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -258,7 +258,7 @@ export default function Dashboard() {
                 <div className="w-full bg-[#1A1F2E]/50 rounded-full h-2 overflow-hidden">
                   <div
                     className="bg-gradient-to-r from-[#3AE8FF] to-[#7CD2FF] h-full rounded-full"
-                    style={{ width: `${(userStats.verifiedComments / userStats.totalComments) * 100}%` }}
+                    style={{ width: `${(userStats.verifiedContributions / userStats.totalContributions) * 100}%` }}
                   />
                 </div>
                 <div className="card-pulse" />

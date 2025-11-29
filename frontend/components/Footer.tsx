@@ -9,7 +9,7 @@ export default function Footer() {
               GO BUZZ
             </h3>
             <p className="text-[#B8C2CC] text-sm">
-              A SocialFi platform for transparent and measurable engagement campaigns.
+              A SocialFi engagement marketplace where verified contributions meet fair rewards.
             </p>
           </div>
           <div>
@@ -25,8 +25,8 @@ export default function Footer() {
             <h4 className="text-white font-semibold mb-4">Features</h4>
             <ul className="space-y-2">
               <li><a href="#" className="footer-link">Create Campaign</a></li>
-              <li><a href="#" className="footer-link">Become Buzzer</a></li>
-              <li><a href="#" className="footer-link">ZK Verification</a></li>
+              <li><a href="#" className="footer-link">Become Contributor</a></li>
+              <li><a href="#" className="footer-link">Verification System</a></li>
               <li><a href="#" className="footer-link">Dashboard</a></li>
             </ul>
           </div>

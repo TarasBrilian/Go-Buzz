@@ -14,8 +14,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "GO BUZZ - Social Media Campaign Platform",
-  description: "Engage with campaigns and earn rewards on GO BUZZ",
+  title: "GO BUZZ - SocialFi Engagement Marketplace",
+  description: "Empowering social engagement contributors to help campaigns grow through measurable, verified actions. Fair rewards, transparent verification, zero-knowledge proof technology.",
 };
 
 export default function RootLayout({

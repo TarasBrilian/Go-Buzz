@@ -124,10 +124,10 @@ export default function Home() {
             </div>
 
             <p className="max-w-3xl text-lg md:text-xl text-[#B8C2CC] mb-6 leading-relaxed">
-              A SocialFi platform connecting campaign creators with buzzer communities.
+              Go Bozz empowers social engagement contributors to help campaigns grow through measurable, verified actions.
             </p>
             <p className="max-w-2xl text-base md:text-lg text-[#B8C2CC] mb-12 leading-relaxed">
-              <span className="text-[#3AE8FF]">Comment, verify, get paid.</span> Rewards calculated based on real engagement with zero knowledge technology from Reclaim.
+              <span className="text-[#3AE8FF]">Engage, verify, earn.</span> Every action is validated with zero-knowledge proof technology, ensuring transparency and fairness for all participants.
             </p>
 
             {/* CTA Buttons */}
@@ -178,9 +178,9 @@ export default function Home() {
               <div className="card-corner card-corner-br" />
 
               <div className="mb-6 text-[#3AE8FF] text-5xl"></div>
-              <h3 className="text-2xl font-bold text-white mb-4">Transparent & Secure</h3>
+              <h3 className="text-2xl font-bold text-white mb-4">Verified & Transparent</h3>
               <p className="text-[#B8C2CC] leading-relaxed">
-                Automatic verification with zero knowledge proof from Reclaim. Privacy protected, campaign results measurable.
+                Every action is verified with zero-knowledge proof technology. Your privacy is protected while campaign results remain fully transparent and measurable.
               </p>
               <div className="card-pulse" />
             </div>
@@ -193,9 +193,9 @@ export default function Home() {
               <div className="card-corner card-corner-br" />
 
               <div className="mb-6 text-[#7CD2FF] text-5xl"></div>
-              <h3 className="text-2xl font-bold text-white mb-4">Fair Rewards</h3>
+              <h3 className="text-2xl font-bold text-white mb-4">Fair & Transparent Rewards</h3>
               <p className="text-[#B8C2CC] leading-relaxed">
-                Get paid based on real engagement. More likes and interactions mean bigger rewards.
+                Earn rewards based on genuine engagement metrics. Every participant has equal opportunity, with compensation directly tied to verified actions and real interactions.
               </p>
               <div className="card-pulse" />
             </div>
@@ -208,9 +208,9 @@ export default function Home() {
               <div className="card-corner card-corner-br" />
 
               <div className="mb-6 text-[#3AE8FF] text-5xl"></div>
-              <h3 className="text-2xl font-bold text-white mb-4">Anti-Fake Engagement</h3>
+              <h3 className="text-2xl font-bold text-white mb-4">No Fake Engagement</h3>
               <p className="text-[#B8C2CC] leading-relaxed">
-                Strict verification system ensures every comment comes from real accounts with genuine engagement.
+                Advanced verification system ensures every contribution comes from authentic accounts with real engagement. No spam, no manipulation—only verified, meaningful actions.
               </p>
               <div className="card-pulse" />
             </div>
@@ -224,7 +224,7 @@ export default function Home() {
               <span className="hologram-text-sm">How It Works</span>
             </h2>
             <p className="text-[#B8C2CC] max-w-2xl mx-auto">
-              Four simple steps to earn rewards from your social media engagement
+              Four simple steps to earn rewards from verified social media contributions
             </p>
           </div>
 
@@ -242,7 +242,7 @@ export default function Home() {
               </div>
               <h3 className="text-xl font-bold text-white mb-3">Create Campaign</h3>
               <p className="text-[#B8C2CC] text-sm leading-relaxed">
-                Define comment keywords and deposit the reward you want to distribute
+                Define engagement tasks and allocate rewards for your campaign goals
               </p>
               <div className="card-pulse" />
             </div>
@@ -258,9 +258,9 @@ export default function Home() {
                 <div className="text-6xl font-bold text-[#7CD2FF] mb-2">02</div>
                 <div className="text-4xl mb-4"></div>
               </div>
-              <h3 className="text-xl font-bold text-white mb-3">Write Comments</h3>
+              <h3 className="text-xl font-bold text-white mb-3">Complete Tasks</h3>
               <p className="text-[#B8C2CC] text-sm leading-relaxed">
-                Choose a campaign and write comments following instructions on social platforms
+                Select a campaign and contribute through verified engagement actions on social platforms
               </p>
               <div className="card-pulse" />
             </div>
@@ -276,9 +276,9 @@ export default function Home() {
                 <div className="text-6xl font-bold text-[#3AE8FF] mb-2">03</div>
                 <div className="text-4xl mb-4"></div>
               </div>
-              <h3 className="text-xl font-bold text-white mb-3">ZK Verification</h3>
+              <h3 className="text-xl font-bold text-white mb-3">Get Verified</h3>
               <p className="text-[#B8C2CC] text-sm leading-relaxed">
-                Submit comment link and let Reclaim verify automatically
+                Submit your contribution link for automatic zero-knowledge verification through Reclaim Protocol
               </p>
               <div className="card-pulse" />
             </div>
@@ -294,9 +294,9 @@ export default function Home() {
                 <div className="text-6xl font-bold text-[#7CD2FF] mb-2">04</div>
                 <div className="text-4xl mb-4"></div>
               </div>
-              <h3 className="text-xl font-bold text-white mb-3">Claim Rewards</h3>
+              <h3 className="text-xl font-bold text-white mb-3">Earn Rewards</h3>
               <p className="text-[#B8C2CC] text-sm leading-relaxed">
-                Get rewards based on the number of likes and engagement you achieve
+                Receive fair compensation based on verified engagement metrics and authentic interactions
               </p>
               <div className="card-pulse" />
             </div>
@@ -314,7 +314,7 @@ export default function Home() {
               </div>
               <div className="stat-item">
                 <div className="text-4xl md:text-5xl font-bold text-[#7CD2FF] mb-2">50K+</div>
-                <div className="text-sm text-[#B8C2CC] uppercase tracking-wider">Buzzers</div>
+                <div className="text-sm text-[#B8C2CC] uppercase tracking-wider">Contributors</div>
               </div>
               <div className="stat-item">
                 <div className="text-4xl md:text-5xl font-bold text-[#3AE8FF] mb-2">100%</div>
@@ -338,10 +338,10 @@ export default function Home() {
                 <span className="text-[#3AE8FF] font-mono text-sm">POWERED_BY_RECLAIM</span>
               </div>
               <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
-                Zero Knowledge Technology
+                Powered by Zero-Knowledge Technology
               </h2>
               <p className="text-[#B8C2CC] max-w-2xl mb-6">
-                Go Buzz uses zero knowledge proof from Reclaim Protocol to verify comments without revealing personal data. Our system ensures every engagement comes from real accounts and is transparently measurable.
+                Go Buzz leverages zero-knowledge proof technology from Reclaim Protocol to verify all contributions without compromising personal data. Every engagement is authenticated from genuine accounts, ensuring complete transparency and measurability.
               </p>
               <div className="flex flex-wrap gap-4">
                 <div className="px-4 py-2 bg-[#3AE8FF]/10 border border-[#3AE8FF]/30 rounded text-[#3AE8FF] text-sm font-mono">
