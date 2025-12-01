@@ -1,0 +1,129 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../lib/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// User model - stores user information and their wallet address
+model User {
+  id                String   @id @default(cuid())
+  address           String   @unique // Wallet address
+  twitterId         String?  @unique // Twitter user ID
+  twitterUsername   String?  // Twitter username
+  twitterHandle     String?  // Twitter handle (e.g., @username)
+  isTwitterAuthorized Boolean @default(false) // Whether user has authorized Twitter
+  twitterAccessToken String? // Twitter OAuth access token
+  twitterRefreshToken String? // Twitter OAuth refresh token
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  // Relations
+  createdCampaigns  Campaign[] @relation("CampaignCreator")
+  participations    CampaignParticipant[]
+  claims            RewardClaim[]
+
+  @@index([address])
+  @@index([twitterId])
+}
+
+// Campaign model - stores campaign details
+model Campaign {
+  id                String   @id @default(cuid())
+  campaignId        String   @unique // Campaign ID from smart contract
+  name              String
+  description       String?  @db.Text // Campaign description (not sent to smart contract)
+  contractAddress   String   // Smart contract address
+  rewardAmount      String   // Reward amount in wei
+  totalParticipants Int      @default(0)
+  maxParticipants   Int?     // Max participants (optional)
+  startDate         DateTime?
+  endDate           DateTime?
+  isActive          Boolean  @default(true)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  // Creator relation
+  creatorId         String
+  creator           User     @relation("CampaignCreator", fields: [creatorId], references: [id])
+
+  // Relations
+  rules             CampaignRule[]
+  participants      CampaignParticipant[]
+  claims            RewardClaim[]
+
+  @@index([campaignId])
+  @@index([creatorId])
+  @@index([isActive])
+}
+
+// CampaignRule model - stores validation rules for campaigns
+model CampaignRule {
+  id          String   @id @default(cuid())
+  campaignId  String
+  campaign    Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  ruleType    String   // e.g., "FOLLOW_TWITTER", "RETWEET", "LIKE", "COMMENT", "MIN_FOLLOWERS"
+  ruleValue   String?  // e.g., Twitter handle to follow, tweet URL, minimum follower count
+  description String   // Human-readable description of the rule
+  isRequired  Boolean  @default(true)
+  order       Int      @default(0) // Display order
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([campaignId])
+}
+
+// CampaignParticipant model - tracks user participation in campaigns
+model CampaignParticipant {
+  id                String   @id @default(cuid())
+  campaignId        String
+  campaign          Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  userId            String
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  hasJoined         Boolean  @default(false)
+  joinedAt          DateTime?
+  validationStatus  String   @default("PENDING") // PENDING, VALIDATED, FAILED
+  validationMessage String?  @db.Text // Validation result message
+
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  // Ensure one participation per user per campaign
+  @@unique([campaignId, userId])
+  @@index([campaignId])
+  @@index([userId])
+  @@index([validationStatus])
+}
+
+// RewardClaim model - tracks reward claims
+model RewardClaim {
+  id              String   @id @default(cuid())
+  campaignId      String
+  campaign        Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  rewardAmount    String   // Amount claimed in wei
+  transactionHash String?  // Blockchain transaction hash
+  claimStatus     String   @default("PENDING") // PENDING, PROCESSING, COMPLETED, FAILED
+  claimError      String?  @db.Text
+  claimedAt       DateTime @default(now())
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Ensure one claim per user per campaign
+  @@unique([campaignId, userId])
+  @@index([campaignId])
+  @@index([userId])
+  @@index([claimStatus])
+  @@index([transactionHash])
+}

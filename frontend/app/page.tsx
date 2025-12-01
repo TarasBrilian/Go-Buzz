@@ -118,13 +118,13 @@ export default function Home() {
             <div className="holo-border mb-8 inline-block">
               <div className="scan-line" />
               <h1 className="hologram-text text-5xl md:text-7xl font-bold tracking-tight">
-                Engagement that
-                <span className="text-[#3AE8FF]"> Pays</span>
+                Engagement With
+                <span className="text-[#3AE8FF]"> Integrity</span>
               </h1>
             </div>
 
             <p className="max-w-3xl text-lg md:text-xl text-[#B8C2CC] mb-6 leading-relaxed">
-              Go Bozz empowers social engagement contributors to help campaigns grow through measurable, verified actions.
+              Go Buzz empowers social engagement contributors to help campaigns grow through measurable, verified actions.
             </p>
             <p className="max-w-2xl text-base md:text-lg text-[#B8C2CC] mb-12 leading-relaxed">
               <span className="text-[#3AE8FF]">Engage, verify, earn.</span> Every action is validated with zero-knowledge proof technology, ensuring transparency and fairness for all participants.

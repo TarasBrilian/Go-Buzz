@@ -10,14 +10,16 @@ interface BlockchainCampaignListProps {
 
 interface CampaignCardProps {
   address: Address;
+  campaignId: number;
 }
 
 interface FilteredCampaignCardProps {
   address: Address;
+  campaignId: number;
   filterExpired: boolean;
 }
 
-function CampaignCard({ address }: CampaignCardProps) {
+function CampaignCard({ address, campaignId }: CampaignCardProps) {
   const { campaignInfo, isLoading } = useCampaignInfo(address);
 
   if (isLoading || !campaignInfo) {
@@ -44,11 +46,10 @@ function CampaignCard({ address }: CampaignCardProps) {
             Contract: {address.slice(0, 6)}...{address.slice(-4)}
           </p>
         </div>
-        <div className={`px-3 py-1 rounded-full text-xs font-bold ${
-          status === 'Active'
-            ? 'bg-green-500/20 text-green-400'
-            : 'bg-orange-500/20 text-orange-400'
-        }`}>
+        <div className={`px-3 py-1 rounded-full text-xs font-bold ${status === 'Active'
+          ? 'bg-green-500/20 text-green-400'
+          : 'bg-orange-500/20 text-orange-400'
+          }`}>
           {status}
         </div>
       </div>
@@ -92,7 +93,7 @@ function CampaignCard({ address }: CampaignCardProps) {
 
       {/* Action Button */}
       <a
-        href={`/app/campaign/${address}`}
+        href={`/app/campaign/${campaignId}`}
         className="block w-full text-center bg-gradient-to-r from-[#00D9FF] to-[#7B61FF] text-white font-bold py-2 px-4 rounded-lg hover:opacity-90 transition-opacity"
       >
         View Details
@@ -101,7 +102,7 @@ function CampaignCard({ address }: CampaignCardProps) {
   );
 }
 
-function FilteredCampaignCard({ address, filterExpired }: FilteredCampaignCardProps) {
+function FilteredCampaignCard({ address, campaignId, filterExpired }: FilteredCampaignCardProps) {
   const { campaignInfo, isLoading } = useCampaignInfo(address);
 
   // Don't render loading state for filtered items - just skip them
@@ -124,7 +125,7 @@ function FilteredCampaignCard({ address, filterExpired }: FilteredCampaignCardPr
     if (!isActive) return null;
   }
 
-  return <CampaignCard address={address} />;
+  return <CampaignCard address={address} campaignId={campaignId} />;
 }
 
 export default function BlockchainCampaignList({ filterExpired = false }: BlockchainCampaignListProps) {
@@ -180,8 +181,8 @@ export default function BlockchainCampaignList({ filterExpired = false }: Blockc
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {campaigns.map((address) => (
-          <FilteredCampaignCard key={address} address={address} filterExpired={filterExpired} />
+        {campaigns.map((address, index) => (
+          <FilteredCampaignCard key={address} address={address} campaignId={index} filterExpired={filterExpired} />
         ))}
       </div>
     </div>

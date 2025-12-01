@@ -7,7 +7,7 @@ interface ValidationModalProps {
   onClose: () => void;
   errors: string[];
   isWalletConnected: boolean;
-  isTwitterAuthorized: boolean;
+  // isTwitterAuthorized: boolean;
 }
 
 export default function ValidationModal({
@@ -15,7 +15,7 @@ export default function ValidationModal({
   onClose,
   errors,
   isWalletConnected,
-  isTwitterAuthorized,
+  // isTwitterAuthorized,
 }: ValidationModalProps) {
   const router = useRouter();
 
@@ -92,7 +92,7 @@ export default function ValidationModal({
           </div>
 
           {/* Twitter Authorization */}
-          <div className={`flex items-center gap-3 p-3 rounded-lg ${
+          {/* <div className={`flex items-center gap-3 p-3 rounded-lg ${
             isTwitterAuthorized
               ? 'bg-green-500/10 border border-green-500/30'
               : 'bg-red-500/10 border border-red-500/30'
@@ -110,7 +110,7 @@ export default function ValidationModal({
                 </svg>
               )}
             </div>
-            <div className="flex-1">
+            {/* <div className="flex-1">
               <p className={`text-sm font-medium ${
                 isTwitterAuthorized ? 'text-green-400' : 'text-red-400'
               }`}>
@@ -121,20 +121,20 @@ export default function ValidationModal({
                   Go to Dashboard to authorize your X account
                 </p>
               )}
-            </div>
-          </div>
+            </div> */}
+          {/* </div> */}
         </div>
 
         {/* Action Buttons */}
         <div className="space-y-3">
-          {!isTwitterAuthorized && (
+          {/* {!isTwitterAuthorized && (
             <button
               onClick={handleGoToDashboard}
               className="w-full px-4 py-3 bg-[#3AE8FF] hover:bg-[#3AE8FF]/80 border border-[#3AE8FF] rounded-lg text-white font-medium transition-colors"
             >
               Go to Dashboard
             </button>
-          )}
+          )} */}
           <button
             onClick={onClose}
             className="w-full px-4 py-3 bg-[#1A1F2E] hover:bg-[#1A1F2E]/80 border border-[#2A3441] rounded-lg text-white font-medium transition-colors"
