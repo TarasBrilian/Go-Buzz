@@ -3,12 +3,14 @@
 import { useParams, useRouter } from 'next/navigation';
 import { AppHeader, SpaceBackground, Panel, VerificationModal } from '@/components';
 import { useAccount } from 'wagmi';
+import { useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
 import { useState, useEffect } from 'react';
 import { useCampaignInfo } from '@/hooks/useCampaignInfo';
 import { useCampaignAddress } from '@/hooks/useCampaignAddress';
 import { useUserValidation } from '@/hooks/useUserValidation';
 import ValidationModal from '@/components/campaign/ValidationModal';
 import { Address, formatUnits } from 'viem';
+import { goBuzzAbi } from '@/abis/goBuzzAbi';
 
 // Optional backend base URL. Set NEXT_PUBLIC_API_BASE_URL in .env.local if backend runs on a different port,
 // e.g. NEXT_PUBLIC_API_BASE_URL=http://localhost:4000
@@ -36,6 +38,13 @@ export default function CampaignDetailPage() {
   const router = useRouter();
   const campaignId = parseInt(params.id as string);
   const { isConnected, address } = useAccount();
+  
+  // Claim reward hooks
+  const { writeContract, isPending: isWritePending, data: claimTxHash } = useWriteContract();
+  const { isLoading: isClaimConfirming, isSuccess: isClaimSuccess } = useWaitForTransactionReceipt({
+    hash: claimTxHash,
+  });
+  
   const [isJoining, setIsJoining] = useState(false);
   const [hasJoined, setHasJoined] = useState(false);
   const [showValidationModal, setShowValidationModal] = useState(false);
@@ -56,6 +65,19 @@ export default function CampaignDetailPage() {
 
   // Track completed tasks by ruleId
   const [completedTasks, setCompletedTasks] = useState<Set<string>>(new Set());
+
+  // Claim reward state
+  const [isClaimingReward, setIsClaimingReward] = useState(false);
+  const [claimError, setClaimError] = useState<string | null>(null);
+  const [hasClaimedReward, setHasClaimedReward] = useState(false);
+
+  // Follow verification state
+  const [isVerifyingFollow, setIsVerifyingFollow] = useState(false);
+  const [activeFollowRuleId, setActiveFollowRuleId] = useState<string | null>(null);
+
+  // Min followers verification state
+  const [isVerifyingFollowers, setIsVerifyingFollowers] = useState(false);
+  const [activeFollowersRuleId, setActiveFollowersRuleId] = useState<string | null>(null);
 
   // Fetch campaign address from factory contract using campaign ID
   const { campaignAddress, isLoading: isLoadingAddress } = useCampaignAddress(campaignId);
@@ -181,6 +203,78 @@ export default function CampaignDetailPage() {
       setIsJoining(false);
     }
   };
+
+  // Helper: Check if all required tasks are completed
+  const areAllRequiredTasksCompleted = () => {
+    if (!campaignData || !campaignData.rules) return false;
+    
+    const requiredRules = campaignData.rules.filter(rule => rule.isRequired);
+    if (requiredRules.length === 0) return false;
+    
+    return requiredRules.every(rule => completedTasks.has(rule.id));
+  };
+
+  // Handle claim reward
+  const handleClaimReward = async () => {
+    if (!address || !campaignAddress) {
+      alert('Please connect your wallet first');
+      return;
+    }
+
+    if (!areAllRequiredTasksCompleted()) {
+      alert('Please complete all required tasks before claiming');
+      return;
+    }
+
+    setIsClaimingReward(true);
+    setClaimError(null);
+
+    try {
+      // Execute the claim reward contract call
+      console.log('[CLAIM] Attempting to claim reward for:', {
+        userAddress: address,
+        campaignAddress: campaignAddress,
+        campaignId: campaignId,
+      });
+
+      // Call the claimReward function on the smart contract
+      writeContract({
+        address: campaignAddress as `0x${string}`,
+        abi: goBuzzAbi,
+        functionName: 'claimReward',
+      });
+
+    } catch (error) {
+      console.error('Error claiming reward:', error);
+      setClaimError(error instanceof Error ? error.message : 'Failed to claim reward');
+      alert('Failed to claim reward. Please try again.');
+    } finally {
+      setIsClaimingReward(false);
+    }
+  };
+
+  // Handle claim transaction success
+  useEffect(() => {
+    if (isClaimSuccess && !isClaimConfirming) {
+      setIsClaimingReward(false);
+      setHasClaimedReward(true);
+      setVerificationModal({
+        isOpen: true,
+        isSuccess: true,
+        message: '🎉 Reward claimed successfully!',
+        details: { tweetId: '', author: '' },
+      });
+      
+      console.log('[CLAIM] Reward claimed successfully');
+    }
+  }, [isClaimSuccess, isClaimConfirming]);
+
+  // Handle claim transaction pending
+  useEffect(() => {
+    if (isWritePending) {
+      setIsClaimingReward(true);
+    }
+  }, [isWritePending]);
 
   const handleOpenValidation = (ruleId: string) => {
     if (activeValidationRuleId === ruleId) {
@@ -327,6 +421,259 @@ export default function CampaignDetailPage() {
         details: { tweetId: '', author: '' },
       });
       setIsSubmittingValidation(false);
+    }
+  };
+
+  // Handle verify follow using direct verification (no Reclaim popup)
+  const handleVerifyFollow = async (ruleId: string, twitterHandle: string) => {
+    if (!address) {
+      alert('Please connect your wallet first');
+      return;
+    }
+
+    setIsVerifyingFollow(true);
+    setActiveFollowRuleId(ruleId);
+
+    try {
+      // Direct verification - auto-verify follow without popup
+      const verifyEndpoint = API_BASE ? `${API_BASE}/api/verify-follow-direct` : `/api/verify-follow-direct`;
+      
+      console.log('[FOLLOW-VERIFY] Verifying follow for:', twitterHandle);
+
+      const verifyResp = await fetch(verifyEndpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          twitterHandle: twitterHandle,
+          userAddress: address || undefined
+        })
+      });
+
+      // Parse JSON with error handling
+      let verifyJson;
+      try {
+        verifyJson = await verifyResp.json();
+      } catch (jsonErr) {
+        console.error('Failed to parse follow verification response as JSON:', jsonErr);
+        console.error('Response status:', verifyResp.status);
+        alert('Failed to verify follow. Please ensure backend is running.');
+        setIsVerifyingFollow(false);
+        setActiveFollowRuleId(null);
+        return;
+      }
+
+      setIsVerifyingFollow(false);
+
+      if (!verifyResp.ok || !verifyJson.success) {
+        console.error('Follow verification failed:', verifyJson);
+        setVerificationModal({
+          isOpen: true,
+          isSuccess: false,
+          message: verifyJson.error || 'Failed to verify follow. Please try again.',
+          details: { tweetId: '', author: '' },
+        });
+        setActiveFollowRuleId(null);
+        return;
+      }
+
+      const { verified, twitterHandle: verifiedHandle } = verifyJson.data;
+
+      if (verified) {
+        // Mark task as completed in localStorage immediately
+        const storageKey = `completed-tasks-${campaignId}-${address}`;
+        const stored = localStorage.getItem(storageKey);
+        const completedTasksList = stored ? JSON.parse(stored) : [];
+        if (!completedTasksList.includes(ruleId)) {
+          completedTasksList.push(ruleId);
+          localStorage.setItem(storageKey, JSON.stringify(completedTasksList));
+          console.log('[COMPLETED-TASKS] Follow task saved to localStorage:', completedTasksList);
+        }
+
+        // Update UI state immediately
+        const newCompleted = new Set<string>(completedTasksList as string[]);
+        setCompletedTasks(newCompleted);
+
+        // Save to database (non-blocking)
+        try {
+          const saveResp = await fetch('/api/campaign/task-completion', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              campaignId,
+              userAddress: address,
+              ruleId: ruleId,
+              ruleType: 'FOLLOW_TWITTER',
+              verificationData: {
+                twitterHandle: verifiedHandle,
+                verified: verified,
+                timestamp: new Date().toISOString(),
+              },
+            }),
+          });
+
+          const saveJson = await saveResp.json();
+          if (!saveResp.ok) {
+            console.warn('Failed to save follow task to database:', saveJson);
+          } else {
+            console.log('[TASK-COMPLETION] Follow task saved to database');
+          }
+        } catch (saveErr) {
+          console.warn('Error saving follow task to database:', saveErr);
+        }
+
+        setVerificationModal({
+          isOpen: true,
+          isSuccess: true,
+          message: `Successfully verified follow of @${verifiedHandle}! Your task is now complete.`,
+          details: { tweetId: verifiedHandle, author: '' },
+        });
+        setActiveFollowRuleId(null);
+        await fetchCampaignData();
+      } else {
+        setVerificationModal({
+          isOpen: true,
+          isSuccess: false,
+          message: 'Follow verification failed. Please ensure you followed the account.',
+          details: { tweetId: '', author: '' },
+        });
+        setActiveFollowRuleId(null);
+      }
+
+    } catch (error) {
+      console.error('Error verifying follow:', error);
+      setVerificationModal({
+        isOpen: true,
+        isSuccess: false,
+        message: 'An error occurred during follow verification: ' + (error instanceof Error ? error.message : 'Unknown error'),
+        details: { tweetId: '', author: '' },
+      });
+      setIsVerifyingFollow(false);
+      setActiveFollowRuleId(null);
+    }
+  };
+
+  // Handle verify minimum followers
+  const handleVerifyFollowers = async (ruleId: string, minFollowers: string) => {
+    if (!address) {
+      alert('Please connect your wallet first');
+      return;
+    }
+
+    setIsVerifyingFollowers(true);
+    setActiveFollowersRuleId(ruleId);
+
+    try {
+      // Call backend to check followers count
+      const verifyEndpoint = API_BASE ? `${API_BASE}/api/verify-followers` : `/api/verify-followers`;
+      
+      console.log('[FOLLOWERS-VERIFY] Verifying followers count. Required:', minFollowers);
+
+      const verifyResp = await fetch(verifyEndpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userAddress: address,
+          minFollowers: parseInt(minFollowers, 10)
+        })
+      });
+
+      // Parse JSON with error handling
+      let verifyJson;
+      try {
+        verifyJson = await verifyResp.json();
+      } catch (jsonErr) {
+        console.error('Failed to parse followers verification response as JSON:', jsonErr);
+        alert('Failed to verify followers. Please ensure backend is running.');
+        setIsVerifyingFollowers(false);
+        setActiveFollowersRuleId(null);
+        return;
+      }
+
+      setIsVerifyingFollowers(false);
+
+      if (!verifyResp.ok || !verifyJson.success) {
+        console.error('Followers verification failed:', verifyJson);
+        setVerificationModal({
+          isOpen: true,
+          isSuccess: false,
+          message: verifyJson.error || 'Failed to verify followers. Please try again.',
+          details: { tweetId: '', author: '' },
+        });
+        setActiveFollowersRuleId(null);
+        return;
+      }
+
+      const { verified, followersCount, minFollowersRequired } = verifyJson.data;
+
+      if (verified) {
+        // Mark task as completed in localStorage immediately
+        const storageKey = `completed-tasks-${campaignId}-${address}`;
+        const stored = localStorage.getItem(storageKey);
+        const completedTasksList = stored ? JSON.parse(stored) : [];
+        if (!completedTasksList.includes(ruleId)) {
+          completedTasksList.push(ruleId);
+          localStorage.setItem(storageKey, JSON.stringify(completedTasksList));
+          console.log('[COMPLETED-TASKS] Followers task saved to localStorage:', completedTasksList);
+        }
+
+        // Update UI state immediately
+        const newCompleted = new Set<string>(completedTasksList as string[]);
+        setCompletedTasks(newCompleted);
+
+        // Save to database (non-blocking)
+        try {
+          const saveResp = await fetch('/api/campaign/task-completion', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              campaignId,
+              userAddress: address,
+              ruleId: ruleId,
+              ruleType: 'MIN_FOLLOWERS',
+              verificationData: {
+                minFollowersRequired: minFollowersRequired,
+                actualFollowers: followersCount,
+                verified: true,
+                timestamp: new Date().toISOString(),
+              },
+            }),
+          });
+
+          if (saveResp.ok) {
+            console.log('[TASK-COMPLETION] Followers task saved to database');
+          }
+        } catch (saveErr) {
+          console.warn('Error saving followers task to database:', saveErr);
+        }
+
+        setVerificationModal({
+          isOpen: true,
+          isSuccess: true,
+          message: `Great! You have ${followersCount} followers, which meets the minimum requirement of ${minFollowersRequired}. Your task is now complete.`,
+          details: { tweetId: `${followersCount}`, author: '' },
+        });
+        setActiveFollowersRuleId(null);
+        await fetchCampaignData();
+      } else {
+        setVerificationModal({
+          isOpen: true,
+          isSuccess: false,
+          message: `You have ${followersCount} followers, but need at least ${minFollowersRequired} followers to complete this task.`,
+          details: { tweetId: '', author: '' },
+        });
+        setActiveFollowersRuleId(null);
+      }
+
+    } catch (error) {
+      console.error('Error verifying followers:', error);
+      setVerificationModal({
+        isOpen: true,
+        isSuccess: false,
+        message: 'An error occurred during followers verification: ' + (error instanceof Error ? error.message : 'Unknown error'),
+        details: { tweetId: '', author: '' },
+      });
+      setIsVerifyingFollowers(false);
+      setActiveFollowersRuleId(null);
     }
   };
 
@@ -709,6 +1056,53 @@ export default function CampaignDetailPage() {
                                         {completedTasks.has(rule.id) ? '✓ Completed' : isValidationActive ? 'Cancel Verification' : 'Verify Task'}
                                       </button>
                                     )}
+
+                                    {/* Verify Button for FOLLOW_TWITTER */}
+                                    {rule.ruleType === 'FOLLOW_TWITTER' && (
+                                      <button
+                                        onClick={() => {
+                                          const handle = rule.ruleValue.startsWith('@') ? rule.ruleValue.slice(1) : rule.ruleValue;
+                                          handleVerifyFollow(rule.id, handle);
+                                        }}
+                                        disabled={completedTasks.has(rule.id) || isVerifyingFollow}
+                                        className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors border ${
+                                          completedTasks.has(rule.id)
+                                            ? 'bg-green-500/20 border-green-500 text-green-400 cursor-not-allowed'
+                                            : isVerifyingFollow && activeFollowRuleId === rule.id
+                                            ? 'bg-[#3AE8FF]/20 border-[#3AE8FF] text-[#3AE8FF]'
+                                            : 'bg-transparent border-[#2A3441] text-[#B8C2CC] hover:border-[#3AE8FF] hover:text-white'
+                                        }`}
+                                      >
+                                        {completedTasks.has(rule.id) 
+                                          ? '✓ Completed' 
+                                          : isVerifyingFollow && activeFollowRuleId === rule.id
+                                          ? 'Verifying...'
+                                          : 'Verify Follow'
+                                        }
+                                      </button>
+                                    )}
+
+                                    {/* Verify Button for MIN_FOLLOWERS */}
+                                    {rule.ruleType === 'MIN_FOLLOWERS' && (
+                                      <button
+                                        onClick={() => handleVerifyFollowers(rule.id, rule.ruleValue)}
+                                        disabled={completedTasks.has(rule.id) || isVerifyingFollowers}
+                                        className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors border ${
+                                          completedTasks.has(rule.id)
+                                            ? 'bg-green-500/20 border-green-500 text-green-400 cursor-not-allowed'
+                                            : isVerifyingFollowers && activeFollowersRuleId === rule.id
+                                            ? 'bg-[#3AE8FF]/20 border-[#3AE8FF] text-[#3AE8FF]'
+                                            : 'bg-transparent border-[#2A3441] text-[#B8C2CC] hover:border-[#3AE8FF] hover:text-white'
+                                        }`}
+                                      >
+                                        {completedTasks.has(rule.id) 
+                                          ? '✓ Completed' 
+                                          : isVerifyingFollowers && activeFollowersRuleId === rule.id
+                                          ? 'Checking...'
+                                          : 'Verify Followers'
+                                        }
+                                      </button>
+                                    )}
                                   </div>
                                 </div>
                               </div>
@@ -775,13 +1169,45 @@ export default function CampaignDetailPage() {
               </div>
 
               {/* Action Buttons */}
-              <div className="flex justify-end pt-6 border-t border-[#2A3441]">
-                <button
-                  onClick={() => router.push('/app')}
-                  className="px-6 py-3 border border-[#2A3441] text-[#B8C2CC] rounded-lg hover:border-[#00D9FF] hover:text-white transition-colors"
-                >
-                  Back to Campaigns
-                </button>
+              <div className="flex justify-between items-center pt-6 border-t border-[#2A3441]">
+                <div>
+                  {hasJoined && campaignData && campaignData.rules && campaignData.rules.length > 0 && (
+                    <div className="text-sm text-[#B8C2CC]">
+                      <span>Completed: </span>
+                      <span className="font-bold text-[#3AE8FF]">
+                        {completedTasks.size}
+                      </span>
+                      <span> / </span>
+                      <span className="font-bold text-[#3AE8FF]">
+                        {campaignData.rules.filter(r => r.isRequired).length}
+                      </span>
+                      <span> required tasks</span>
+                    </div>
+                  )}
+                </div>
+                <div className="flex gap-3">
+                  {hasJoined && campaignData && campaignData.rules && campaignData.rules.length > 0 && (
+                    <button
+                      onClick={handleClaimReward}
+                      disabled={isClaimingReward || !areAllRequiredTasksCompleted() || hasClaimedReward}
+                      className={`px-6 py-3 rounded-lg font-bold transition-all ${
+                        hasClaimedReward
+                          ? 'bg-gray-600 text-gray-400 cursor-not-allowed opacity-60'
+                          : areAllRequiredTasksCompleted()
+                          ? 'bg-gradient-to-r from-green-500 to-emerald-600 text-white hover:opacity-90 shadow-lg shadow-green-500/50'
+                          : 'bg-gray-500 text-gray-300 cursor-not-allowed opacity-50'
+                      }`}
+                    >
+                      {hasClaimedReward ? '✅ Already Claimed' : isClaimingReward ? 'Claiming...' : '💰 Claim Reward'}
+                    </button>
+                  )}
+                  <button
+                    onClick={() => router.push('/app')}
+                    className="px-6 py-3 border border-[#2A3441] text-[#B8C2CC] rounded-lg hover:border-[#00D9FF] hover:text-white transition-colors"
+                  >
+                    Back to Campaigns
+                  </button>
+                </div>
               </div>
             </div>
           </Panel>
