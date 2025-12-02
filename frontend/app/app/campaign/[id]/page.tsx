@@ -1,7 +1,7 @@
 'use client';
 
 import { useParams, useRouter } from 'next/navigation';
-import { AppHeader, SpaceBackground, Panel } from '@/components';
+import { AppHeader, SpaceBackground, Panel, VerificationModal } from '@/components';
 import { useAccount } from 'wagmi';
 import { useState, useEffect } from 'react';
 import { useCampaignInfo } from '@/hooks/useCampaignInfo';
@@ -9,6 +9,10 @@ import { useCampaignAddress } from '@/hooks/useCampaignAddress';
 import { useUserValidation } from '@/hooks/useUserValidation';
 import ValidationModal from '@/components/campaign/ValidationModal';
 import { Address, formatUnits } from 'viem';
+
+// Optional backend base URL. Set NEXT_PUBLIC_API_BASE_URL in .env.local if backend runs on a different port,
+// e.g. NEXT_PUBLIC_API_BASE_URL=http://localhost:4000
+const API_BASE = typeof process !== 'undefined' ? (process.env.NEXT_PUBLIC_API_BASE_URL as string) || '' : '';
 
 interface CampaignRule {
   id: string;
@@ -36,8 +40,22 @@ export default function CampaignDetailPage() {
   const [hasJoined, setHasJoined] = useState(false);
   const [showValidationModal, setShowValidationModal] = useState(false);
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
-  const [commentLink, setCommentLink] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Validation Form State
+  const [activeValidationRuleId, setActiveValidationRuleId] = useState<string | null>(null);
+  const [validationLink, setValidationLink] = useState('');
+  const [isSubmittingValidation, setIsSubmittingValidation] = useState(false);
+
+  // Verification Modal State
+  const [verificationModal, setVerificationModal] = useState({
+    isOpen: false,
+    isSuccess: false,
+    message: '',
+    details: { tweetId: '', author: '' },
+  });
+
+  // Track completed tasks by ruleId
+  const [completedTasks, setCompletedTasks] = useState<Set<string>>(new Set());
 
   // Fetch campaign address from factory contract using campaign ID
   const { campaignAddress, isLoading: isLoadingAddress } = useCampaignAddress(campaignId);
@@ -81,6 +99,50 @@ export default function CampaignDetailPage() {
     fetchCampaignData();
   }, [campaignId, address]);
 
+  // Fetch completed tasks when campaign data loads - use localStorage as fallback
+  useEffect(() => {
+    if (!campaignData || !address) return;
+
+    const checkCompletedTasks = async () => {
+      const completed = new Set<string>();
+      const storageKey = `completed-tasks-${campaignId}-${address}`;
+      
+      // First check localStorage for quick access
+      try {
+        const stored = localStorage.getItem(storageKey);
+        if (stored) {
+          const storedTasks = JSON.parse(stored);
+          storedTasks.forEach((ruleId: string) => completed.add(ruleId));
+          console.log('[COMPLETED-TASKS] Loaded from localStorage:', storedTasks);
+        }
+      } catch (err) {
+        console.warn('Error loading from localStorage:', err);
+      }
+      
+      // Then try to check database (optional, with error tolerance)
+      for (const rule of campaignData.rules) {
+        try {
+          const res = await fetch(
+            `/api/campaign/task-completion?campaignId=${campaignId}&userAddress=${encodeURIComponent(address)}&ruleId=${encodeURIComponent(rule.id)}`
+          );
+          if (res.ok) {
+            const json = await res.json();
+            if (json.success && json.data.isCompleted) {
+              completed.add(rule.id);
+            }
+          }
+        } catch (err) {
+          console.warn(`Error checking task completion for rule ${rule.id}:`, err);
+          // Silently fail - don't block UI
+        }
+      }
+      
+      setCompletedTasks(completed);
+    };
+
+    checkCompletedTasks();
+  }, [campaignData, address, campaignId]);
+
   const handleJoinCampaign = async () => {
     // Check if wallet is connected
     if (!isConnected || !address) {
@@ -120,24 +182,152 @@ export default function CampaignDetailPage() {
     }
   };
 
-  const handleSubmitComment = () => {
-    if (!commentLink.trim()) {
-      alert('Please enter your comment link');
+  const handleOpenValidation = (ruleId: string) => {
+    if (activeValidationRuleId === ruleId) {
+      setActiveValidationRuleId(null);
+      setValidationLink('');
+    } else {
+      setActiveValidationRuleId(ruleId);
+      setValidationLink('');
+    }
+  };
+
+  const handleSubmitValidation = async (ruleId: string, ruleType: string) => {
+    if (!validationLink.trim()) {
+      alert('Please enter the verification link');
       return;
     }
 
-    if (!commentLink.includes('x.com') && !commentLink.includes('twitter.com')) {
-      alert('Please enter a valid X (Twitter) comment link');
+    if ((ruleType === 'COMMENT' || ruleType === 'RETWEET' || ruleType === 'LIKE') &&
+      (!validationLink.includes('x.com') && !validationLink.includes('twitter.com'))) {
+      alert('Please enter a valid X (Twitter) link');
       return;
     }
 
-    setIsSubmitting(true);
-    // TODO: Implement actual submission logic with Reclaim Protocol
-    setTimeout(() => {
-      setIsSubmitting(false);
-      alert('Comment link submitted successfully! Verification in progress...');
-      setCommentLink('');
-    }, 2000);
+    setIsSubmittingValidation(true);
+
+    try {
+      // Direct verification - user submit link, backend verify automatically (no Reclaim popup)
+      const verifyEndpoint = API_BASE ? `${API_BASE}/api/verify-comment-direct` : `/api/verify-comment-direct`;
+      
+      console.log('Submitting validation link to:', verifyEndpoint);
+
+      const verifyResp = await fetch(verifyEndpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          url: validationLink,
+          userAddress: address || undefined
+        })
+      });
+
+      // Parse JSON with error handling (don't read body twice)
+      let verifyJson;
+      try {
+        verifyJson = await verifyResp.json();
+      } catch (jsonErr) {
+        console.error('Failed to parse verification response as JSON:', jsonErr);
+        console.error('Response status:', verifyResp.status);
+        alert('Failed to verify comment. Please ensure backend is running.');
+        setIsSubmittingValidation(false);
+        return;
+      }
+
+      setIsSubmittingValidation(false);
+
+      if (!verifyResp.ok || !verifyJson.success) {
+        console.error('Verification failed:', verifyJson);
+        setVerificationModal({
+          isOpen: true,
+          isSuccess: false,
+          message: verifyJson.error || 'Failed to verify comment. Invalid URL format or server error.',
+          details: { tweetId: '', author: '' },
+        });
+        return;
+      }
+
+      const { verified, tweetId } = verifyJson.data;
+
+      if (verified) {
+        // Mark task as completed in localStorage immediately
+        if (activeValidationRuleId) {
+          const storageKey = `completed-tasks-${campaignId}-${address}`;
+          const stored = localStorage.getItem(storageKey);
+          const completedTasksList = stored ? JSON.parse(stored) : [];
+          if (!completedTasksList.includes(activeValidationRuleId)) {
+            completedTasksList.push(activeValidationRuleId);
+            localStorage.setItem(storageKey, JSON.stringify(completedTasksList));
+            console.log('[COMPLETED-TASKS] Saved to localStorage:', completedTasksList);
+          }
+          
+          // Update UI state immediately
+          const newCompleted = new Set<string>(completedTasksList as string[]);
+          setCompletedTasks(newCompleted);
+        }
+
+        // Also save task completion to database (optional, non-blocking)
+        // Only save proof and validation data, no personal data like username
+        try {
+          const saveResp = await fetch('/api/campaign/task-completion', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              campaignId,
+              userAddress: address,
+              ruleId: activeValidationRuleId,
+              ruleType: activeValidationRuleId 
+                ? campaignData?.rules.find(r => r.id === activeValidationRuleId)?.ruleType 
+                : 'UNKNOWN',
+              verificationData: {
+                tweetId: tweetId || '',
+                verified: verified,
+                timestamp: new Date().toISOString(),
+              },
+            }),
+          });
+
+          const saveJson = await saveResp.json();
+          if (!saveResp.ok) {
+            console.warn('Failed to save task completion to database:', saveJson);
+            // Still show success to user - localStorage backup is already saved
+          } else {
+            console.log('[TASK-COMPLETION] Saved to database successfully');
+          }
+        } catch (saveErr) {
+          console.warn('Error saving task completion to database:', saveErr);
+          // Continue anyway - verification was successful and localStorage is backup
+
+        }
+
+        setVerificationModal({
+          isOpen: true,
+          isSuccess: true,
+          message: 'Your task has been verified successfully! Your task will be marked as completed shortly.',
+          details: { tweetId: tweetId || '', author: '' },
+        });
+        setActiveValidationRuleId(null);
+        setValidationLink('');
+        // Refresh campaign data to show updated status
+        await fetchCampaignData();
+      } else {
+        setVerificationModal({
+          isOpen: true,
+          isSuccess: false,
+          message: 'Verification failed. Please check the link and try again.',
+          details: { tweetId: tweetId || '', author: '' },
+        });
+      }
+
+    } catch (error) {
+      console.error('Error submitting validation link:', error);
+      setVerificationModal({
+        isOpen: true,
+        isSuccess: false,
+        message: 'An error occurred while verifying: ' + (error instanceof Error ? error.message : 'Unknown error'),
+        details: { tweetId: '', author: '' },
+      });
+      setIsSubmittingValidation(false);
+    }
   };
 
   // Helper function to get rule type label
@@ -453,53 +643,107 @@ export default function CampaignDetailPage() {
                         {campaignData.rules.map((rule, index) => {
                           const colors = ['#3AE8FF', '#7CD2FF', '#00D9FF', '#5BBFFF'];
                           const color = colors[index % colors.length];
+                          const isValidationActive = activeValidationRuleId === rule.id;
 
                           return (
-                            <div key={rule.id} className={`flex items-start gap-4 ${index < campaignData.rules.length - 1 ? 'pb-4 border-b border-[#2A3441]' : ''}`}>
-                              <div className="flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center" style={{ backgroundColor: `${color}1A`, border: `1px solid ${color}4D` }}>
-                                <span className="font-bold" style={{ color }}>{index + 1}</span>
-                              </div>
-                              <div className="flex-1">
-                                <div className="flex items-center gap-2 mb-2">
-                                  <h4 className="font-semibold text-white">{getRuleTypeLabel(rule.ruleType)}</h4>
-                                  {rule.isRequired && (
-                                    <span className="px-2 py-0.5 bg-yellow-500/10 border border-yellow-500/30 rounded text-yellow-400 text-xs font-medium">
-                                      Required
-                                    </span>
-                                  )}
+                            <div key={rule.id} className={`flex flex-col gap-4 ${index < campaignData.rules.length - 1 ? 'pb-4 border-b border-[#2A3441]' : ''}`}>
+                              <div className="flex items-start gap-4">
+                                <div className="flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center" style={{ backgroundColor: `${color}1A`, border: `1px solid ${color}4D` }}>
+                                  <span className="font-bold" style={{ color }}>{index + 1}</span>
                                 </div>
-                                <p className="text-[#B8C2CC] text-sm mb-3">{rule.description}</p>
-
-                                {rule.ruleType !== 'MIN_FOLLOWERS' ? (
-                                  <a
-                                    href={getRuleUrl(rule)}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors"
-                                    style={{
-                                      backgroundColor: `${color}1A`,
-                                      border: `1px solid ${color}4D`,
-                                      color: color
-                                    }}
-                                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = `${color}33`}
-                                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = `${color}1A`}
-                                  >
-                                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                                      <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
-                                    </svg>
-                                    {getRuleButtonText(rule.ruleType)}
-                                  </a>
-                                ) : (
-                                  <div className="px-4 py-2 rounded-lg text-sm"
-                                    style={{
-                                      backgroundColor: `${color}1A`,
-                                      border: `1px solid ${color}4D`,
-                                      color: color
-                                    }}>
-                                    Minimum {rule.ruleValue} followers required
+                                <div className="flex-1">
+                                  <div className="flex items-center gap-2 mb-2">
+                                    <h4 className="font-semibold text-white">{getRuleTypeLabel(rule.ruleType)}</h4>
+                                    {rule.isRequired && (
+                                      <span className="px-2 py-0.5 bg-yellow-500/10 border border-yellow-500/30 rounded text-yellow-400 text-xs font-medium">
+                                        Required
+                                      </span>
+                                    )}
                                   </div>
-                                )}
+                                  <p className="text-[#B8C2CC] text-sm mb-3">{rule.description}</p>
+
+                                  <div className="flex flex-wrap gap-3">
+                                    {rule.ruleType !== 'MIN_FOLLOWERS' ? (
+                                      <a
+                                        href={getRuleUrl(rule)}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+                                        style={{
+                                          backgroundColor: `${color}1A`,
+                                          border: `1px solid ${color}4D`,
+                                          color: color
+                                        }}
+                                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = `${color}33`}
+                                        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = `${color}1A`}
+                                      >
+                                        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                                          <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+                                        </svg>
+                                        {getRuleButtonText(rule.ruleType)}
+                                      </a>
+                                    ) : (
+                                      <div className="px-4 py-2 rounded-lg text-sm"
+                                        style={{
+                                          backgroundColor: `${color}1A`,
+                                          border: `1px solid ${color}4D`,
+                                          color: color
+                                        }}>
+                                        Minimum {rule.ruleValue} followers required
+                                      </div>
+                                    )}
+
+                                    {/* Verify Button for specific rule types */}
+                                    {(rule.ruleType === 'COMMENT' || rule.ruleType === 'RETWEET' || rule.ruleType === 'LIKE') && (
+                                      <button
+                                        onClick={() => handleOpenValidation(rule.id)}
+                                        disabled={completedTasks.has(rule.id)}
+                                        className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors border ${
+                                          completedTasks.has(rule.id)
+                                            ? 'bg-green-500/20 border-green-500 text-green-400 cursor-not-allowed'
+                                            : isValidationActive
+                                            ? 'bg-[#3AE8FF]/20 border-[#3AE8FF] text-[#3AE8FF]'
+                                            : 'bg-transparent border-[#2A3441] text-[#B8C2CC] hover:border-[#3AE8FF] hover:text-white'
+                                        }`}
+                                      >
+                                        {completedTasks.has(rule.id) ? '✓ Completed' : isValidationActive ? 'Cancel Verification' : 'Verify Task'}
+                                      </button>
+                                    )}
+                                  </div>
+                                </div>
                               </div>
+
+                              {/* Validation Form */}
+                              {isValidationActive && (
+                                <div className="ml-12 mt-2 p-4 bg-[#1A1F2E] border border-[#2A3441] rounded-lg animate-fadeIn">
+                                  <h5 className="text-white text-sm font-semibold mb-3">Submit Verification Link</h5>
+                                  <div className="flex flex-col gap-3">
+                                    <input
+                                      type="text"
+                                      value={validationLink}
+                                      onChange={(e) => setValidationLink(e.target.value)}
+                                      placeholder={`Paste your ${rule.ruleType.toLowerCase()} link here...`}
+                                      className="w-full px-4 py-2 bg-[#0A0E14] border border-[#2A3441] rounded-lg text-white text-sm focus:outline-none focus:border-[#3AE8FF] transition-colors"
+                                    />
+                                    <div className="flex justify-end gap-3">
+                                      <button
+                                        onClick={() => handleOpenValidation(rule.id)}
+                                        className="px-4 py-2 text-sm text-[#B8C2CC] hover:text-white transition-colors"
+                                      >
+                                        Cancel
+                                      </button>
+                                      <button
+                                        onClick={() => handleSubmitValidation(rule.id, rule.ruleType)}
+                                        disabled={isSubmittingValidation || !validationLink}
+                                        className={`px-4 py-2 bg-[#3AE8FF] text-[#0A0E14] text-sm font-bold rounded-lg transition-opacity ${isSubmittingValidation || !validationLink ? 'opacity-50 cursor-not-allowed' : 'hover:opacity-90'
+                                          }`}
+                                      >
+                                        {isSubmittingValidation ? 'Verifying...' : 'Submit Link'}
+                                      </button>
+                                    </div>
+                                  </div>
+                                </div>
+                              )}
                             </div>
                           );
                         })}
@@ -551,6 +795,17 @@ export default function CampaignDetailPage() {
         errors={validationErrors}
         isWalletConnected={isWalletConnected}
       // isTwitterAuthorized={isTwitterAuthorized}
+      />
+
+      {/* Verification Modal */}
+      <VerificationModal
+        isOpen={verificationModal.isOpen}
+        isSuccess={verificationModal.isSuccess}
+        message={verificationModal.message}
+        details={verificationModal.details}
+        onClose={() => {
+          setVerificationModal({ ...verificationModal, isOpen: false });
+        }}
       />
     </div>
   );

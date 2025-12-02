@@ -170,6 +170,11 @@ export default function BlockchainCampaignList({ filterExpired = false }: Blockc
     );
   }
 
+  // Create an array with indices and reverse it to show newest first
+  const reversedCampaigns = campaigns
+    .map((address, index) => ({ address, index }))
+    .reverse();
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -181,7 +186,7 @@ export default function BlockchainCampaignList({ filterExpired = false }: Blockc
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {campaigns.map((address, index) => (
+        {reversedCampaigns.map(({ address, index }) => (
           <FilteredCampaignCard key={address} address={address} campaignId={index} filterExpired={filterExpired} />
         ))}
       </div>

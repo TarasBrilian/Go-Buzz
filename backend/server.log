@@ -1,0 +1,13 @@
+
+> start
+> node server.js
+
+[dotenv@17.2.3] injecting env (4) from .env -- tip: 📡 add observability to secrets: https://dotenvx.com/ops
+Backend server running on http://localhost:4000
+[VERIFY] URL: https://x.com/singgihTara/status/1995799418310984074?s=20, urlUsername: singgihTara, fetchedUsername: singgihTara, verified: true
+[VERIFY] URL: https://x.com/singgihTara/status/1995799418310984074?s=20, urlUsername: singgihTara, fetchedUsername: singgihTara, verified: true
+[VERIFY] URL: https://x.com/singgihTara/status/1995799418310984074?s=20, urlUsername: singgihTara, fetchedUsername: singgihTara, verified: true
+[VERIFY] URL: https://x.com/singgihTara/status/1995799418310984074?s=20, urlUsername: singgihTara, fetchedUsername: null, verified: true
+[VERIFY] URL: https://x.com/singgihTara/status/1995799418310984074?s=20, urlUsername: singgihTara, fetchedUsername: singgihTara, verified: true
+[VERIFY] URL: https://x.com/singgihTara/status/1995799418310984074?s=20, urlUsername: singgihTara, fetchedUsername: singgihTara, verified: true
+[VERIFY] URL: https://x.com/singgihTara/status/1995799418310984074?s=20, urlUsername: singgihTara, fetchedUsername: singgihTara, verified: true

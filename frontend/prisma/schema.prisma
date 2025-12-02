@@ -27,6 +27,7 @@ model User {
   createdCampaigns  Campaign[] @relation("CampaignCreator")
   participations    CampaignParticipant[]
   claims            RewardClaim[]
+  taskCompletions   TaskCompletion[]
 
   @@index([address])
   @@index([twitterId])
@@ -56,6 +57,7 @@ model Campaign {
   rules             CampaignRule[]
   participants      CampaignParticipant[]
   claims            RewardClaim[]
+  taskCompletions   TaskCompletion[]
 
   @@index([campaignId])
   @@index([creatorId])
@@ -127,3 +129,30 @@ model RewardClaim {
   @@index([claimStatus])
   @@index([transactionHash])
 }
+
+// TaskCompletion model - tracks completed tasks by users
+model TaskCompletion {
+  id                String   @id @default(cuid())
+  campaignId        String
+  campaign          Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  userId            String
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  ruleId            String
+  
+  ruleType          String   // COMMENT, RETWEET, LIKE, FOLLOW_TWITTER, etc.
+  verificationData  String?  @db.Text // JSON string with proof validation only (tweetId, verified, timestamp) - NO personal data
+  isVerified        Boolean  @default(false)
+  verificationError String?  @db.Text // Error message if verification failed
+  
+  completedAt       DateTime @default(now())
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  // Ensure one completion per user per rule per campaign
+  @@unique([campaignId, userId, ruleId])
+  @@index([campaignId])
+  @@index([userId])
+  @@index([ruleId])
+  @@index([isVerified])
+}
+
